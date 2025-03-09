@@ -1,0 +1,46 @@
+import pandas as pd
+import numpy as np
+from sklearn.cluster import KMeans
+import statsmodels.api as sm
+
+# Step 1: Load Data
+df = pd.read_csv("data/data_censored.csv")
+print(df.head())
+
+# Step 2: Data Preparation
+# Convert categorical variables if needed
+df = pd.get_dummies(df, drop_first=True)
+
+# Step 3: Censoring Models (Placeholder - Implement logic based on dataset specifics)
+# Assume a censoring column exists
+df['censored'] = df['event_column'].apply(lambda x: 1 if x == 'censored' else 0)
+
+# Step 4: Calculate Weights (Inverse Probability Weights - Placeholder)
+df['weights'] = 1 / (df['treatment_prob'] + 1e-6)
+
+# Step 5: Specify Outcome Model (Simple Regression)
+X = df[['treatment', 'age', 'sex_male']]  # Example predictors
+y = df['outcome']
+X = sm.add_constant(X)
+model = sm.OLS(y, X).fit()
+print(model.summary())
+
+# Step 6: Expand Trials (Example expansion logic)
+df_expanded = df.copy()
+df_expanded['trial_id'] = np.arange(len(df))
+
+# Step 7: Clustering Mechanism (TTE-v2 Modification)
+kmeans = KMeans(n_clusters=3, random_state=42)
+df_expanded['cluster'] = kmeans.fit_predict(df_expanded[['age', 'treatment']])
+
+# Step 8: Fit Marginal Structural Model
+X_clustered = df_expanded[['treatment', 'age', 'sex_male', 'cluster']]
+X_clustered = sm.add_constant(X_clustered)
+model_clustered = sm.OLS(y, X_clustered).fit()
+print(model_clustered.summary())
+
+# Step 9: Inference
+print("Standard Model Coefficients:")
+print(model.params)
+print("Clustered Model Coefficients:")
+print(model_clustered.params)
